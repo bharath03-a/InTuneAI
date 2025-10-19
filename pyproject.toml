@@ -5,7 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.119.0",
     "google-adk>=1.16.0",
     "pydantic>=2.12.3",
 ]
