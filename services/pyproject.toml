@@ -1,10 +1,10 @@
 [project]
-name = "intuneai"
+name = "services"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
+ependencies = [
     "google-adk>=1.16.0",
     "pydantic>=2.12.3",
 ]
