@@ -14,12 +14,13 @@ logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 
 AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Get session service URI from environment variables
-session_uri = os.getenv("SESSION_SERVICE_URI", None)
+session_uri = SESSION_DB_URL = f"sqlite:///{os.path.join(BASE_DIR, 'sessions.db')}"
 
 # Prepare arguments for get_fast_api_app
-app_args = {"agents_dir": AGENT_DIR, "web": True}
+app_args = {"agents_dir": AGENT_DIR, "web": False, "allow_origins": ["*"]}
 
 # Only include session_service_uri if it's provided
 if session_uri:
@@ -63,8 +64,29 @@ def collect_feedback(feedback: Feedback) -> dict[str, str]:
     return {"status": "success"}
 
 
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+
+@app.get("/agent-info")
+async def agent_info():
+    """Provide agent information"""
+    from multi_tool_agent.agent import root_agent
+
+    return {
+        "agent_name": root_agent.name,
+        "description": root_agent.description,
+        "model": root_agent.model,
+        "tools": [t.__name__ for t in root_agent.tools],
+    }
+
+
 # Main execution
 if __name__ == "__main__":
+    import os
+
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
