@@ -1,77 +1,174 @@
-# Pulumi GCP Python Storage Bucket Template
+# InTuneAI Cloud Run Deployment
 
- A minimal Pulumi template for provisioning a Google Cloud Storage bucket using Python.
+This directory contains the infrastructure code for deploying the InTuneAI API to Google Cloud Run using Pulumi.
 
- This template helps you get started with Pulumi and the `pulumi-gcp` provider to create a simple storage bucket and export its URL.
+## Overview
 
- ## When to Use
+The InTuneAI API is deployed as a containerized service on Google Cloud Run, providing:
 
- - You need a quick example of using Pulumi with Google Cloud in Python.
- - You want to manage a Google Cloud Storage bucket as code.
- - You’re looking for a minimal scaffold to build more complex GCP infrastructure.
+- Serverless container execution
+- Automatic scaling
+- Pay-per-use pricing
+- Global availability
 
- ## Prerequisites
+## Prerequisites
 
- - A Google Cloud account and a target GCP project.
- - Authentication set up via `gcloud auth login` or the `GOOGLE_APPLICATION_CREDENTIALS` environment variable.
- - Python 3.7 or later installed on your machine.
- - Pulumi CLI installed and logged in to your Pulumi account.
+Before deploying, ensure you have the following installed:
 
- ## Usage
+1. **Google Cloud CLI** - [Install Guide](https://cloud.google.com/sdk/docs/install)
+2. **Pulumi CLI** - [Install Guide](https://www.pulumi.com/docs/get-started/install/)
+3. **Docker** - [Install Guide](https://docs.docker.com/get-docker/)
+4. **Python 3.12+** - [Install Guide](https://www.python.org/downloads/)
 
- Run the following command to scaffold a new project from this template:
+## Quick Deployment
 
- ```bash
- pulumi new gcp-python
- ```
+The easiest way to deploy is using the provided deployment script:
 
- Follow the interactive prompts:
- - **Project Name**: Your project name.
- - **Project Description**: A short description of your project.
- - **gcp:project**: The ID of the Google Cloud project where resources will be created.
+```bash
+./deploy.sh
+```
 
- After the project is generated, navigate into your project directory and deploy:
+This script will:
 
- ```bash
- cd <project-name>
- pulumi up
- ```
+1. Check all dependencies
+2. Authenticate with Google Cloud
+3. Build and push the Docker image
+4. Deploy the Cloud Run service using Pulumi
 
- Confirm the changes to provision your storage bucket.
+## Manual Deployment Steps
 
- ## Project Layout
+If you prefer to deploy manually, follow these steps:
 
- ```
- .
- ├── __main__.py        # Pulumi program defining resources
- ├── Pulumi.yaml        # Project configuration and template metadata
- └── requirements.txt   # Python dependencies for Pulumi and GCP
- ```
+### 1. Authenticate with Google Cloud
 
- ## Configuration
+```bash
+gcloud auth login
+gcloud auth application-default login
+gcloud config set project data-engineering-ai-472818
+```
 
- - **gcp:project**: (Required) The Google Cloud project ID where resources will be created.
+### 2. Build and Push Docker Image
 
- ## Resources Created
+```bash
+# Navigate to services directory
+cd ../services
 
- - **Storage Bucket** (`pulumi_gcp.storage.Bucket`): A bucket named `my-bucket` in the `US` location.
+# Build the Docker image
+docker build -t intuneai-api:latest .
 
- ## Outputs
+# Tag for Google Artifact Registry
+docker tag intuneai-api:latest us-central1-docker.pkg.dev/data-engineering-ai-472818/cloud-run-ai/intuneai-api:latest
 
- - **bucket_name**: The URL of the created storage bucket.
+# Push to Google Artifact Registry
+docker push us-central1-docker.pkg.dev/data-engineering-ai-472818/cloud-run-ai/intuneai-api:latest
 
- ## Next Steps
+# Return to infra directory
+cd ../infra
+```
 
- - Modify `__main__.py` to customize the bucket:
-   - Change the bucket name.
-   - Adjust the `location` or add bucket labels and IAM policies.
- - Add more GCP resources such as Pub/Sub topics, Compute instances, or BigQuery datasets.
- - Integrate with CI/CD pipelines using `pulumi preview` and `pulumi up --yes`.
- - Explore the [Pulumi GCP Provider Documentation](https://www.pulumi.com/registry/packages/gcp/) for more examples.
+### 3. Install Dependencies
 
- ## Need Help?
+```bash
+pip install -r requirements.txt
+```
 
- - Pulumi Docs: https://www.pulumi.com/docs/
- - GCP Provider Docs: https://www.pulumi.com/registry/packages/gcp/
- - Community Slack: https://slack.pulumi.com/
- - GitHub Issues: https://github.com/pulumi/pulumi/issues
+### 4. Deploy with Pulumi
+
+```bash
+# Initialize Pulumi stack (if not already done)
+pulumi stack init dev
+
+# Deploy the infrastructure
+pulumi up
+```
+
+## Configuration
+
+The deployment uses the following configuration:
+
+- **Project**: `data-engineering-ai-472818`
+- **Region**: `us-central1`
+- **Container Image**: `us-central1-docker.pkg.dev/data-engineering-ai-472818/cloud-run-ai/intuneai-api:latest`
+- **Port**: `8080`
+- **CPU**: `1000m` (1 vCPU)
+- **Memory**: `512Mi`
+
+## Resources Created
+
+- **Cloud Run Service**: `intuneai-service`
+- **IAM Policy**: Allows unauthenticated access to the service
+
+## Outputs
+
+After deployment, you'll get:
+
+- **service_url**: The public URL of your deployed service
+- **service_name**: The name of the Cloud Run service
+
+## Monitoring and Management
+
+### View Logs
+
+```bash
+gcloud run services logs tail intuneai-service --region=us-central1
+```
+
+### Update Service
+
+```bash
+pulumi up
+```
+
+### Destroy Resources
+
+```bash
+pulumi destroy
+```
+
+## Project Structure
+
+```
+infra/
+├── __main__.py          # Pulumi program defining Cloud Run service
+├── deploy.sh            # Automated deployment script
+├── requirements.txt     # Python dependencies
+├── Pulumi.yaml         # Pulumi project configuration
+├── Pulumi.dev.yaml     # Development stack configuration
+└── README.md           # This file
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Authentication Error**
+
+   ```bash
+   gcloud auth application-default login
+   ```
+
+2. **Docker Push Permission Denied**
+
+   ```bash
+   gcloud auth configure-docker
+   ```
+
+3. **Pulumi Stack Not Found**
+   ```bash
+   pulumi stack init dev
+   ```
+
+### Getting Help
+
+- [Pulumi Documentation](https://www.pulumi.com/docs/)
+- [Google Cloud Run Documentation](https://cloud.google.com/run/docs)
+- [Pulumi GCP Provider](https://www.pulumi.com/registry/packages/gcp/)
+
+## Next Steps
+
+After successful deployment:
+
+1. Test your API endpoint
+2. Set up monitoring and alerting
+3. Configure custom domains if needed
+4. Set up CI/CD for automated deployments
