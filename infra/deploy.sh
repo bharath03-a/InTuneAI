@@ -57,9 +57,26 @@ build_and_push_image() {
     # Navigate to services directory
     cd ../services
 
-    # Build the Docker image
-    echo "Building Docker image: intuneai-api:latest"
-    docker build -t intuneai-api:latest .
+    # Ensure buildx is available and a builder exists
+    if ! docker buildx version >/dev/null 2>&1; then
+        echo "❌ Docker Buildx is required. Please update Docker Desktop/Engine."
+        exit 1
+    fi
+
+    # Create and use a dedicated builder if none exists
+    if ! docker buildx inspect intuneai-builder >/dev/null 2>&1; then
+        docker buildx create --name intuneai-builder --use >/dev/null
+    else
+        docker buildx use intuneai-builder >/dev/null
+    fi
+
+    # Build the Docker image for linux/amd64 to avoid exec format errors on Cloud Run
+    echo "Building multi-arch Docker image (linux/amd64): intuneai-api:latest"
+    docker buildx build \
+        --platform linux/amd64 \
+        -t intuneai-api:latest \
+        --load \
+        .
 
     # Tag for Google Artifact Registry
     docker tag intuneai-api:latest us-central1-docker.pkg.dev/data-engineering-ai-472818/cloud-run-ai/intuneai-api:latest

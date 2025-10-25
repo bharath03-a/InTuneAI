@@ -1,21 +1,16 @@
-FROM python:3.12-slim
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install uv
-RUN pip install --no-cache-dir uv==0.7.13
-
+FROM python:3.13-slim
 WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN adduser --disabled-password --gecos "" myuser && \
+    chown -R myuser:myuser /app
 
 COPY . .
 
-# Install dependencies
-RUN uv sync --frozen
+USER myuser
 
-EXPOSE 8080
+ENV PATH="/home/myuser/.local/bin:$PATH"
 
-# Use python directly instead of uv run
-CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
