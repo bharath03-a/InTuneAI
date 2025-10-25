@@ -23,7 +23,8 @@ service = cloudrun.Service(
         spec=cloudrun.ServiceTemplateSpecArgs(
             containers=[
                 cloudrun.ServiceTemplateSpecContainerArgs(
-                    image="us-central1-docker.pkg.dev/data-engineering-ai-472818/cloud-run-ai/intuneai-api:latest",
+                    image=pulumi.Config().get("image")
+                    or "us-central1-docker.pkg.dev/data-engineering-ai-472818/cloud-run-ai/intuneai-api:latest",
                     ports=[
                         cloudrun.ServiceTemplateSpecContainerPortArgs(
                             container_port=8080, name="http1"

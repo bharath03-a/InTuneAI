@@ -1,0 +1,89 @@
+name: Deploy InTuneAI to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: data-engineering-ai-472818
+  REGION: us-central1
+  SERVICE_NAME: intune-ai-agent
+  IMAGE_NAME: intuneai-api
+  DOCKER_REGISTRY: us-central1-docker.pkg.dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Uncomment next line to require CI checks to pass before deployment
+    # needs: [pre-commit, format-check, lint-check]
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Docker for GCR
+        run: |
+          gcloud auth configure-docker $REGION-docker.pkg.dev --quiet
+
+      - name: Install Pulumi
+        uses: pulumi/actions@v4
+
+      - name: Set up Pulumi Cloud
+        uses: pulumi/actions@v4
+        with:
+          pulumi-version: latest
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          cd services
+          gcloud builds submit \
+            --tag $DOCKER_REGISTRY/$PROJECT_ID/cloud-run-ai/$IMAGE_NAME:$GITHUB_SHA \
+            --tag $DOCKER_REGISTRY/$PROJECT_ID/cloud-run-ai/$IMAGE_NAME:latest \
+            .
+
+      - name: Deploy with Pulumi
+        working-directory: infra
+        run: |
+          pip install -r requirements.txt
+          pulumi stack select dev || pulumi stack init dev
+          pulumi config set gcp:project $PROJECT_ID
+          pulumi config set project $PROJECT_ID
+          pulumi config set location $REGION
+          pulumi config set use_vertex_ai false
+          pulumi config set image $DOCKER_REGISTRY/$PROJECT_ID/cloud-run-ai/$IMAGE_NAME:$GITHUB_SHA
+          pulumi up --yes
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          GOOGLE_CLOUD_PROJECT: ${{ env.PROJECT_ID }}
+          GOOGLE_CLOUD_LOCATION: ${{ env.REGION }}
+          GOOGLE_GENAI_USE_VERTEXAI: false
+
+      - name: Get service URL
+        working-directory: infra
+        run: |
+          SERVICE_URL=$(pulumi stack output service_url)
+          echo "Service deployed at: $SERVICE_URL"
+          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_ENV
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+      - name: Output deployment info
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo "🌐 Service URL: $SERVICE_URL"
+          echo "📦 Image: $DOCKER_REGISTRY/$PROJECT_ID/cloud-run-ai/$IMAGE_NAME:$GITHUB_SHA"

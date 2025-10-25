@@ -16,3 +16,5 @@ wheels/
 .env
 
 sessions.db
+
+key.json
