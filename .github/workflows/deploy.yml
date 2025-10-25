@@ -54,8 +54,7 @@ jobs:
           cd services
           gcloud builds submit \
             --project=$PROJECT_ID \
-            --tag $DOCKER_REGISTRY/$PROJECT_ID/cloud-run-ai/$IMAGE_NAME:$GITHUB_SHA \
-            --no-logs-streaming .
+            --tag $DOCKER_REGISTRY/$PROJECT_ID/cloud-run-ai/$IMAGE_NAME:$GITHUB_SHA .
 
       - name: Deploy with Pulumi
         working-directory: infra
