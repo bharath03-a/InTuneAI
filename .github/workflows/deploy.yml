@@ -33,6 +33,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ env.PROJECT_ID }}
 
       - name: Set up Docker for GCR
         run: |
@@ -52,9 +53,9 @@ jobs:
         run: |
           cd services
           gcloud builds submit \
+            --project=$PROJECT_ID \
             --tag $DOCKER_REGISTRY/$PROJECT_ID/cloud-run-ai/$IMAGE_NAME:$GITHUB_SHA \
-            --tag $DOCKER_REGISTRY/$PROJECT_ID/cloud-run-ai/$IMAGE_NAME:latest \
-            .
+            --no-logs-streaming .
 
       - name: Deploy with Pulumi
         working-directory: infra
