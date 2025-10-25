@@ -3,26 +3,50 @@
 import pulumi
 from pulumi_gcp import cloudrun
 
+# Get configuration values
+config = pulumi.Config()
+project_id = config.get("project") or "data-engineering-ai-472818"
+location = config.get("location") or "us-central1"
+use_vertex_ai = config.get_bool("use_vertex_ai") or False
+
 # Create a Cloud Run service
 service = cloudrun.Service(
-    "intuneai-service",
-    location="us-central1",
+    "intune-ai-agent",
+    location=location,
     template=cloudrun.ServiceTemplateArgs(
+        metadata=cloudrun.ServiceTemplateMetadataArgs(
+            annotations={
+                "autoscaling.knative.dev/maxScale": "10",
+                "run.googleapis.com/execution-environment": "gen2",
+            }
+        ),
         spec=cloudrun.ServiceTemplateSpecArgs(
             containers=[
                 cloudrun.ServiceTemplateSpecContainerArgs(
-                    image="us-central1-docker.pkg.dev/data-engineering-ai-472818/cloud-run-ai/intuneai-api:latest",  # Docker image name
+                    image="us-central1-docker.pkg.dev/data-engineering-ai-472818/cloud-run-ai/intuneai-api:latest",
                     ports=[
                         cloudrun.ServiceTemplateSpecContainerPortArgs(
                             container_port=8080, name="http1"
                         )
                     ],
                     resources=cloudrun.ServiceTemplateSpecContainerResourcesArgs(
-                        limits={"cpu": "1000m", "memory": "512Mi"}
+                        limits={"cpu": "1000m", "memory": "1Gi"}
                     ),
+                    envs=[
+                        cloudrun.ServiceTemplateSpecContainerEnvArgs(
+                            name="GOOGLE_CLOUD_PROJECT", value=project_id
+                        ),
+                        cloudrun.ServiceTemplateSpecContainerEnvArgs(
+                            name="GOOGLE_CLOUD_LOCATION", value=location
+                        ),
+                        cloudrun.ServiceTemplateSpecContainerEnvArgs(
+                            name="GOOGLE_GENAI_USE_VERTEXAI",
+                            value=str(use_vertex_ai).lower(),
+                        ),
+                    ],
                 )
             ]
-        )
+        ),
     ),
 )
 

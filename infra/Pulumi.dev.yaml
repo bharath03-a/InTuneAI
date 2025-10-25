@@ -1,2 +1,5 @@
 config:
   gcp:project: data-engineering-ai-472818
+  cloudrunai:project: data-engineering-ai-472818
+  cloudrunai:location: us-central1
+  cloudrunai:use_vertex_ai: "false"
